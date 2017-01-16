@@ -1,0 +1,78 @@
+# Docker Image Authorization Plugin
+# Build and Test tools
+FROM centos:7
+
+MAINTAINER Chaitanya Prakash N <cpdevws@gmail.com>
+
+# Enable init
+ENV container docker
+RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
+systemd-tmpfiles-setup.service ] || rm -f $i; done); \
+rm -f /lib/systemd/system/multi-user.target.wants/*;\
+rm -f /etc/systemd/system/*.wants/*;\
+rm -f /lib/systemd/system/local-fs.target.wants/*; \
+rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
+rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
+rm -f /lib/systemd/system/basic.target.wants/*;\
+rm -f /lib/systemd/system/anaconda.target.wants/*;
+VOLUME [ "/sys/fs/cgroup" ]
+
+ARG DOCKER_VERSION
+
+# add docker repo
+RUN echo "[dockerrepo]" > /etc/yum.repos.d/docker.repo \
+    && echo "name=Docker Repository" >> /etc/yum.repos.d/docker.repo \
+    && echo "baseurl=https://yum.dockerproject.org/repo/main/centos/7/" >> /etc/yum.repos.d/docker.repo \
+    && echo "enabled=1" >> /etc/yum.repos.d/docker.repo \
+    && echo "gpgcheck=1" >> /etc/yum.repos.d/docker.repo \
+    && echo "gpgkey=https://yum.dockerproject.org/gpg" >> /etc/yum.repos.d/docker.repo
+
+
+# Install docker engine, golang, python, pip and make
+RUN yum install -y docker-engine-${DOCKER_VERSION} \
+    && yum install -y epel-release \
+    && yum update -y \
+    && yum install -y git python-devel make golang python-pip \
+    && pip install docker
+
+RUN echo "[Unit]" > /usr/lib/systemd/system/docker.service \
+    && echo "Description=Docker Application Container Engine" >> /usr/lib/systemd/system/docker.service \
+    && echo "Documentation=https://docs.docker.com" >> /usr/lib/systemd/system/docker.service \
+    && echo "After=network.target" >> /usr/lib/systemd/system/docker.service \
+    && echo "" >> /usr/lib/systemd/system/docker.service \
+    && echo "[Service]" >> /usr/lib/systemd/system/docker.service \
+    && echo "Type=notify" >> /usr/lib/systemd/system/docker.service \
+    && echo "# the default is not to use systemd for cgroups because the delegate issues still" >> /usr/lib/systemd/system/docker.service \
+    && echo "# exists and systemd currently does not support the cgroup feature set required" >> /usr/lib/systemd/system/docker.service \
+    && echo "# for containers run by docker" >> /usr/lib/systemd/system/docker.service \
+    && echo "ExecStart=/usr/bin/dockerd --authorization-plugin img-authz-plugin" >> /usr/lib/systemd/system/docker.service \
+    && echo "ExecReload=/bin/kill -s HUP \$MAINPID" >> /usr/lib/systemd/system/docker.service \
+    && echo "# Having non-zero Limit*s causes performance problems due to accounting overhead" >> /usr/lib/systemd/system/docker.service \
+    && echo "# in the kernel. We recommend using cgroups to do container-local accounting." >> /usr/lib/systemd/system/docker.service \
+    && echo "LimitNOFILE=infinity" >> /usr/lib/systemd/system/docker.service \
+    && echo "LimitNPROC=infinity" >> /usr/lib/systemd/system/docker.service \
+    && echo "LimitCORE=infinity" >> /usr/lib/systemd/system/docker.service \
+    && echo "# Uncomment TasksMax if your systemd version supports it." >> /usr/lib/systemd/system/docker.service \
+    && echo "# Only systemd 226 and above support this version." >> /usr/lib/systemd/system/docker.service \
+    && echo "#TasksMax=infinity" >> /usr/lib/systemd/system/docker.service \
+    && echo "TimeoutStartSec=0" >> /usr/lib/systemd/system/docker.service \
+    && echo "# set delegate yes so that systemd does not reset the cgroups of docker containers" >> /usr/lib/systemd/system/docker.service \
+    && echo "Delegate=yes" >> /usr/lib/systemd/system/docker.service \
+    && echo "# kill only the docker process, not all processes in the cgroup" >> /usr/lib/systemd/system/docker.service \
+    && echo "KillMode=process" >> /usr/lib/systemd/system/docker.service \
+    && echo "" >> /usr/lib/systemd/system/docker.service \
+    && echo "[Install]" >> /usr/lib/systemd/system/docker.service \
+    && echo "WantedBy=multi-user.target" >> /usr/lib/systemd/system/docker.service
+
+# ADD source code and tests to the image
+ENV PLUGIN_DIR /usr/local/plugin
+ADD . ${PLUGIN_DIR}
+ENV GOPATH ${PLUGIN_DIR}
+
+# Speed up tests by building the plugin
+RUN (cd ${PLUGIN_DIR}; \
+     make; make config; make install)
+
+WORKDIR ${PLUGIN_DIR}
+    
+CMD "/usr/sbin/init"
