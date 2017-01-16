@@ -1,0 +1,12 @@
+---
+  sudo: required
+  services:
+    - docker
+  notifications:
+    email: false
+  script:
+    - docker build -t plugin-tests-1.12.6 -f Dockerfile.test --build-arg DOCKER_VERSION=1.12.6 --rm .
+    - docker run --privileged -d --name plugin-tests-1.12.6 plugin-tests-1.12.6
+    - docker exec plugin-tests-1.12.6 python tests.py
+    - docker rm -f plugin-tests-1.12.6
+    - docker rmi -f plugin-tests-1.12.6
