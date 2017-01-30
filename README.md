@@ -51,16 +51,16 @@ docker rmi -f plugin-tests-1.12.6
 docker build -t plugin-build-tools:latest .
 
 # Build the image authorization plugin from sources
-docker run --rm -v `pwd`:`pwd` -w `pwd` plugin-build-tools:latest make
+docker run --rm -v `pwd`:`pwd` -w `pwd` -e GOPATH=`pwd` plugin-build-tools:latest make
 
 # Generate the plugin service units configuration
 # IMPORTANT: Please note that the make config command supports generation of systemd units for CentOS/RHEL only
 # IMPORTANT: If you do not want to authorize any registry, please leave the REGISTRIES variable below empty
-docker run --rm -v `pwd`:`pwd` -w `pwd` plugin-build-tools:latest \
+docker run --rm -v `pwd`:`pwd` -w `pwd` -e GOPATH=`pwd` plugin-build-tools:latest \
   make config REGISTRIES=<authorized_registry1>,<authorized_registry2>,...
 
 # Install the plugin service
-docker run --rm -v `pwd`:`pwd` -w `pwd` -v /usr/libexec:/usr/libexec \
+docker run --rm -v `pwd`:`pwd` -w `pwd` -e GOPATH=`pwd` -v /usr/libexec:/usr/libexec \
   -v /usr/lib/systemd/system:/usr/lib/systemd/system plugin-build-tools:latest \
   make install
   
@@ -83,13 +83,14 @@ systemctl restart docker
 ```
 
 ### Stop and uninstall the plugin
+NOTE: Before doing below, remove the authorization-plugin configuration created above and restart the docker daemon.
 ```
 # Stop the plugin service
 systemctl stop img-authz-plugin
 systemctl disable img-authz-plugin
 
 # Uninstall the plugin service units
-docker run --rm -v `pwd`:`pwd` -w `pwd` -v /usr/libexec:/usr/libexec \
+docker run --rm -v `pwd`:`pwd` -w `pwd` -e GOPATH=`pwd` -v /usr/libexec:/usr/libexec \
   -v /usr/lib/systemd/system:/usr/lib/systemd/system plugin-build-tools:latest \
   make uninstall
 
@@ -97,7 +98,7 @@ docker run --rm -v `pwd`:`pwd` -w `pwd` -v /usr/libexec:/usr/libexec \
 
 ### To remove the generated artifacts
 ```
-docker run --rm -v `pwd`:`pwd` -w `pwd` plugin-build-tools:latest make clean
+docker run --rm -v `pwd`:`pwd` -w `pwd` -e GOPATH=`pwd` plugin-build-tools:latest make clean
 ```
 
 ### Access plugin logs
