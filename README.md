@@ -1,6 +1,6 @@
 # Docker Image Authorization Plugin
 
-[![Build Status](https://travis-ci.org/cpdevws/img-authz-plugin.svg?branch=master)](https://travis-ci.org/cpdevws/img-authz-plugin)
+[![Build Status](https://travis-ci.org/crosslibs/img-authz-plugin.svg?branch=master)](https://travis-ci.org/crosslibs/img-authz-plugin)
 
 The image authorization plugin allows docker images only from a list of authorized registries to be used by the docker engine. For additional information, please refer to [docker documentation](https://docs.docker.com/engine/extend/) on plugins.
 
